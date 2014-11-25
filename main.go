@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,6 +10,8 @@ import (
 )
 
 var (
+	isChild = flag.Bool("child", false, "parent pid")
+
 	SignalHandlers = map[os.Signal]func(){
 		syscall.SIGWINCH: restart,
 		syscall.SIGHUP:   reload,
@@ -18,16 +21,31 @@ var (
 		syscall.SIGUSR2:  work,
 	}
 
-	Garbage []byte = make([]byte, 0)
+	Garbage = make([]byte, 0)
 )
 
 func main() {
+	flag.Parse()
+
 	fmt.Println("Dumdum Started")
 
-	handleSignals()
+	if !*isChild {
+		handleParentSignals()
+	} else {
+		handleChildSignals()
+
+		ppid := os.Getppid()
+		fmt.Println("ppid", ppid)
+	}
 }
 
-func handleSignals() {
+func handleChildSignals() {
+	for {
+		// Don't do anything yet
+	}
+}
+
+func handleParentSignals() {
 	signals := make(chan os.Signal)
 
 	for key, _ := range SignalHandlers {
@@ -51,6 +69,8 @@ func restart() {
 
 func increase() {
 	fmt.Println("increase")
+
+	os.StartProcess(os.Args[0], append(os.Args, "-child"), &os.ProcAttr{})
 }
 
 func decrease() {
